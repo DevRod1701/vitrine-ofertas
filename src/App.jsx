@@ -8,42 +8,53 @@ function App() {
   const [produto, setProduto] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // COLOQUE AQUI O LINK DO SEU WORKER QUE VOCÊ COPIOU NO PASSO 1
+  const WORKER_URL = "https://api-vitrine.devrod1701.workers.dev"; 
+
   useEffect(() => {
     const carregarProduto = async () => {
       try {
         setLoading(true);
 
-        // 1. LER A URL DO NAVEGADOR
-        // Procura por ?id=MLB... ou ?q=NomeDoProduto
+        // 1. Verifica se tem busca manual na URL (?id=... ou ?q=...)
         const params = new URLSearchParams(window.location.search);
-        const idUrl = params.get('id'); // Ex: MLB123456
-        const buscaUrl = params.get('q'); // Ex: "iPhone 13"
+        const idUrl = params.get('id'); 
+        const buscaUrl = params.get('q'); 
 
         let endpoint = '';
 
         if (idUrl) {
-            // Se tiver ID no link, busca direto pelo ID (Mais preciso)
+            // Prioridade 1: Link direto com ID
             const cleanId = idUrl.replace(/-/g, '').trim();
             endpoint = `https://api.mercadolibre.com/items/${cleanId}`;
         } else if (buscaUrl) {
-            // Se tiver termo de busca, pesquisa o melhor resultado
+            // Prioridade 2: Link de busca
             endpoint = `https://api.mercadolibre.com/sites/MLB/search?q=${buscaUrl}&limit=1`;
         } else {
-            // Se não tiver nada no link, mostra um produto padrão (Isca Padrão)
-            // Vou deixar um Fone Bluetooth como padrão aqui
-            endpoint = `https://api.mercadolibre.com/sites/MLB/search?q=fone%20bluetooth%20lenovo&limit=1`;
+            // Prioridade 3 (Automática): Buscar da sua lista via Worker
+            // Chama o Worker para descobrir qual produto está na sua lista
+            const workerResponse = await fetch(WORKER_URL);
+            const workerData = await workerResponse.json();
+
+            if (workerData.ids && workerData.ids.length > 0) {
+              // Pega o PRIMEIRO item da sua lista para ser a "Oferta do Dia"
+              const idDaLista = workerData.ids[0]; 
+              endpoint = `https://api.mercadolibre.com/items/${idDaLista}`;
+            } else {
+              // Fallback se a lista estiver vazia (Isca padrão)
+              endpoint = `https://api.mercadolibre.com/sites/MLB/search?q=fone%20bluetooth&limit=1`;
+            }
         }
 
+        // 2. Busca os detalhes do produto final na API do ML
         const response = await fetch(endpoint);
         const data = await response.json();
 
-        // A API responde diferente para busca (results[]) ou item único
         let itemEncontrado = null;
-
         if (data.results && data.results.length > 0) {
-            itemEncontrado = data.results[0]; // Veio da busca
+            itemEncontrado = data.results[0];
         } else if (data.id) {
-            itemEncontrado = data; // Veio da busca por ID
+            itemEncontrado = data;
         }
 
         setProduto(itemEncontrado);
@@ -86,13 +97,12 @@ function App() {
         </a>
         <span className="secure-text">🔒 Grupo Silencioso | Sem Spam | 100% Grátis</span>
 
-        {/* --- CARD MÁGICO --- */}
         <div className="daily-offer">
-          <span className="offer-tag">🔥 Oportunidade Relâmpago</span>
+          <span className="offer-tag">🔥 Destaque da Minha Lista</span>
           
           {loading ? (
             <div style={{padding: '40px', textAlign: 'center'}}>
-               <p>Carregando oferta exclusiva...</p>
+               <p>Buscando melhor oferta...</p>
             </div>
           ) : produto ? (
             <>
@@ -129,7 +139,6 @@ function App() {
                 </div>
               )}
               
-              {/* O Link leva para o produto no ML */}
               <a href={produto.permalink} target="_blank" rel="noopener noreferrer" className="btn-offer">
                 Ver Detalhes no ML
               </a>
@@ -138,7 +147,6 @@ function App() {
             <p>Oferta expirada ou não encontrada.</p>
           )}
         </div>
-
       </main>
 
       <footer>
