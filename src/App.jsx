@@ -1,98 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWhatsapp } from '@fortawesome/free-brands-svg-icons';
-import logoImg from './images/logo2.jpg';
+import React, { useEffect, useState } from "react";
+import "./App.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
+import logoImg from "./images/logo2.jpg";
+
+import arBritania from "./images/ar-britania.jpg";
+import foneJBL from "./images/fone.jpg";
+import tvSamsung from "./images/tv.jpg";
+import airFry from "./images/air-fry.jpg";
+
+// 🔥 PRODUTOS FIXOS
+const PRODUTOS = [
+  {
+    id: "ar",
+    title: "Ar Condicionado Split Britânia 12000 BTUs Frio",
+    image: arBritania,
+    maxDiscount: 20
+  },
+  {
+    id: "fone",
+    title: "Fone de Ouvido Bluetooth JBL Tune 510BT",
+    image: foneJBL,
+    maxDiscount: 40
+  },
+  {
+    id: "tv",
+    title: 'Smart TV Samsung 50" Crystal UHD 4K',
+    image: tvSamsung,
+    maxDiscount: 30
+  },
+  {
+    id: "airfry",
+    title: "Fritadeira Elétrica Air Fryer Mondial 4L",
+    image: airFry,
+    maxDiscount: 51
+  }
+];
+
+// 🔧 FUNÇÕES COOKIE
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+  return null;
+};
+
+const setCookie = (name, value, days) => {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/`;
+};
 
 function App() {
   const [produto, setProduto] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 🔗 LINK AFILIADO ÚNICO
+  const LINK_AFILIADO = "https://mercadolivre.com/sec/32eptA4";
+
   useEffect(() => {
-    const carregarProduto = async () => {
-      try {
-        setLoading(true);
+    setLoading(true);
 
-        const params = new URLSearchParams(window.location.search);
-        const idUrl = params.get("id");
-        const buscaUrl = params.get("q");
+    // 📦 Produtos já vistos
+    const vistosCookie = getCookie("produtos_vistos");
+    let vistos = vistosCookie ? JSON.parse(vistosCookie) : [];
 
-        let produtoFinal = null;
+    // 🔄 Filtra produtos ainda não vistos
+    let disponiveis = PRODUTOS.filter(
+      (p) => !vistos.includes(p.id)
+    );
 
-        // PRIORIDADE 1 — ID direto (?id=MLB...)
-        if (idUrl) {
-          const res = await fetch(
-            `https://api.mercadolibre.com/items/${idUrl}`
-          );
-          produtoFinal = await res.json();
+    // 🔁 Se todos já foram vistos, reseta
+    if (disponiveis.length === 0) {
+      vistos = [];
+      disponiveis = [...PRODUTOS];
+    }
 
-        // PRIORIDADE 2 — Busca personalizada (?q=iphone)
-        } else if (buscaUrl) {
-          const res = await fetch(
-            `https://api.mercadolibre.com/sites/MLB/search?q=${buscaUrl}&limit=20`
-          );
-          const data = await res.json();
-          const lista = data.results || [];
+    // 🎲 Sorteia
+    const sorteado =
+      disponiveis[Math.floor(Math.random() * disponiveis.length)];
 
-          if (lista.length === 0) {
-            throw new Error("Busca vazia");
-          }
+    // 💾 Atualiza cookie
+    const novosVistos = [...vistos, sorteado.id];
+    setCookie(
+      "produtos_vistos",
+      JSON.stringify(novosVistos),
+      7 // dias
+    );
 
-          produtoFinal = lista[Math.floor(Math.random() * lista.length)];
-
-        // PRIORIDADE 3 — Automático (erro de preço)
-        } else {
-          const res = await fetch(
-            "https://api.mercadolibre.com/sites/MLB/search" +
-            "?category=MLB1648" +
-            "&price=100-3000" +
-            "&sort=discount_desc" +
-            "&limit=20"
-          );
-          const data = await res.json();
-          const lista = data.results || [];
-
-          if (lista.length === 0) {
-            throw new Error("Automático vazio");
-          }
-
-          produtoFinal = lista[Math.floor(Math.random() * lista.length)];
-        }
-
-        if (!produtoFinal || produtoFinal.error) {
-          throw new Error("Produto inválido");
-        }
-
-        setProduto(produtoFinal);
-
-      } catch (error) {
-        console.error("Erro ao carregar produto:", error);
-        setProduto(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    carregarProduto();
+    setProduto(sorteado);
+    setLoading(false);
   }, []);
-
-  const formatMoney = (value) => {
-    if (!value) return "—";
-    return value.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    });
-  };
-
-  const calcularDesconto = (original, atual) => {
-    if (!original || !atual) return null;
-    return Math.round(((original - atual) / original) * 100);
-  };
-
-  const imageUrl =
-    produto?.pictures?.[0]?.url ||
-    produto?.thumbnail?.replace("I.jpg", "W.jpg") ||
-    "";
 
   return (
     <div className="container">
@@ -101,13 +98,16 @@ function App() {
           <img src={logoImg} alt="Logo" />
         </div>
         <h1>Ofertas Premium BR</h1>
-        <p className="subtitle">Monitoramos os preços 24h por dia.</p>
+        <p className="subtitle">
+          Descontos reais aplicados direto no Mercado Livre
+        </p>
       </header>
 
       <main>
+        
         <p className="headline">
-          Pare de rasgar dinheiro. <br />
-          Receba <span className="highlight">Erros de Preço</span> e Cupons Secretos no seu celular.
+          💥 Pare de rasgar dinheiro! <br />
+          Receba  <span className="highlight">Erros de Preço e Cupons Secretos</span> no seu celular.
         </p>
 
         <a
@@ -123,80 +123,57 @@ function App() {
         </span>
 
         <div className="daily-offer">
-          <span className="offer-tag">🔥 Oportunidade Relâmpago</span>
+          <span className="offer-tag">
+            🔥 DESCONTO ATIVO AGORA
+          </span>
 
-          {loading ? (
-            <div style={{ padding: '40px', textAlign: 'center' }}>
-              <p>Buscando melhor oferta...</p>
-            </div>
-          ) : produto ? (
+          {loading || !produto ? (
+            <p>Carregando melhor oferta...</p>
+          ) : (
             <>
               <img
-                src={imageUrl}
+                src={produto.image}
                 alt={produto.title}
                 style={{
-                  width: '180px',
-                  height: '180px',
-                  objectFit: 'contain',
-                  display: 'block',
-                  margin: '10px auto'
+                  width: "180px",
+                  height: "180px",
+                  objectFit: "contain",
+                  margin: "10px auto",
+                  display: "block"
                 }}
               />
 
-              <h3 style={{ fontSize: '1rem', lineHeight: '1.4', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: "1rem", marginBottom: "10px" }}>
                 {produto.title}
               </h3>
 
-              <p style={{ fontSize: '1.2rem', marginTop: '10px' }}>
-                {produto.original_price && (
-                  <>
-                    De:{' '}
-                    <strike style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                      {formatMoney(produto.original_price)}
-                    </strike>
-                    <br />
-                  </>
-                )}
-                Por:{' '}
-                <strong style={{ color: '#0F172A', fontSize: '1.5rem' }}>
-                  {formatMoney(produto.price)}
-                </strong>
+              <div
+                className="discount-badge"
+                style={{ fontSize: "1.2rem", padding: "10px 16px" }}
+              >
+                ATÉ {produto.maxDiscount}% OFF
+              </div>
+
+              <p style={{ fontSize: "0.8rem", opacity: 0.8 }}>
+                ⏳ Oferta pode acabar a qualquer momento <br />
+                💥 Desconto aplicado direto no Mercado Livre
               </p>
 
-              {produto.original_price && (
-                <div
-                  style={{
-                    backgroundColor: '#dcfce7',
-                    color: '#166534',
-                    display: 'inline-block',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '0.8rem',
-                    fontWeight: 'bold',
-                    marginTop: '5px'
-                  }}
-                >
-                  {calcularDesconto(produto.original_price, produto.price)}% OFF
-                </div>
-              )}
-
               <a
-                href={produto.permalink}
+                href={LINK_AFILIADO}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-offer"
               >
-                Ver Detalhes no ML
+                Ver ofertas com desconto agora
               </a>
             </>
-          ) : (
-            <p>Oferta expirada ou não encontrada.</p>
           )}
         </div>
       </main>
 
       <footer>
-        <p>© 2025 Oferta Premium BR.</p>
+        <p>© 2025 Ofertas Premium BR.</p>
       </footer>
     </div>
   );
