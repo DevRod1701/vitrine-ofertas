@@ -8,7 +8,7 @@ function App() {
   const [produto, setProduto] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // COLOQUE AQUI O LINK DO SEU WORKER QUE VOCÊ COPIOU NO PASSO 1
+  // SEU WORKER (Certifique-se de que este link está correto)
   const WORKER_URL = "https://api-vitrine.devrod1701.workers.dev"; 
 
   useEffect(() => {
@@ -24,25 +24,34 @@ function App() {
         let endpoint = '';
 
         if (idUrl) {
-            // Prioridade 1: Link direto com ID
+            // Prioridade 1: Link direto com ID (ex: ?id=MLB...)
             const cleanId = idUrl.replace(/-/g, '').trim();
             endpoint = `https://api.mercadolibre.com/items/${cleanId}`;
         } else if (buscaUrl) {
-            // Prioridade 2: Link de busca
+            // Prioridade 2: Link de busca (ex: ?q=iphone)
             endpoint = `https://api.mercadolibre.com/sites/MLB/search?q=${buscaUrl}&limit=1`;
         } else {
-            // Prioridade 3 (Automática): Buscar da sua lista via Worker
-            // Chama o Worker para descobrir qual produto está na sua lista
-            const workerResponse = await fetch(WORKER_URL);
-            const workerData = await workerResponse.json();
+            // Prioridade 3 (Automática): Buscar lista via Worker e SORTEAR
+            try {
+                const workerResponse = await fetch(WORKER_URL);
+                const workerData = await workerResponse.json();
 
-            if (workerData.ids && workerData.ids.length > 0) {
-              // Pega o PRIMEIRO item da sua lista para ser a "Oferta do Dia"
-              const idDaLista = workerData.ids[0]; 
-              endpoint = `https://api.mercadolibre.com/items/${idDaLista}`;
-            } else {
-              // Fallback se a lista estiver vazia (Isca padrão)
-              endpoint = `https://api.mercadolibre.com/sites/MLB/search?q=fone%20bluetooth&limit=1`;
+                if (workerData.ids && workerData.ids.length > 0) {
+                  // --- AQUI ESTÁ O SORTEIO ALEATÓRIO ---
+                  // Escolhe um número aleatório entre 0 e o tamanho da lista
+                  const indiceAleatorio = Math.floor(Math.random() * workerData.ids.length);
+                  const idSorteado = workerData.ids[indiceAleatorio]; 
+                  
+                  endpoint = `https://api.mercadolibre.com/items/${idSorteado}`;
+                } else {
+                  // Fallback: Se a lista vier vazia, mostra um produto padrão
+                  endpoint = `https://api.mercadolibre.com/sites/MLB/search?q=fone%20bluetooth&limit=1`;
+                }
+            } catch (workerError) {
+                console.error("Erro no Worker:", workerError);
+                // Fallback de segurança se o Worker falhar
+                const ID_BACKUP = "MLB3402773599"; // Ar Condicionado (exemplo)
+                endpoint = `https://api.mercadolibre.com/items/${ID_BACKUP}`;
             }
         }
 
@@ -60,7 +69,7 @@ function App() {
         setProduto(itemEncontrado);
 
       } catch (error) {
-        console.error("Erro ao carregar:", error);
+        console.error("Erro geral:", error);
       } finally {
         setLoading(false);
       }
@@ -98,7 +107,7 @@ function App() {
         <span className="secure-text">🔒 Grupo Silencioso | Sem Spam | 100% Grátis</span>
 
         <div className="daily-offer">
-          <span className="offer-tag">🔥 Destaque da Minha Lista</span>
+          <span className="offer-tag">🔥 Oportunidade Relâmpago</span>
           
           {loading ? (
             <div style={{padding: '40px', textAlign: 'center'}}>
